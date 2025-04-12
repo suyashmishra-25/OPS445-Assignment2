@@ -20,8 +20,16 @@ def call_du_sub(target_dir):
         # Gracefully return empty list so tests pass
         return []
 
-def create_dir_dict(lines, target_dir):
+def create_dir_dict(lines):
     dir_dict = {}
+    if not lines:
+        return dir_dict
+    # Get target directory from the last line (total line)
+    last_line = lines[-1]
+    parts = last_line.strip().split(maxsplit=1)
+    if len(parts) != 2:
+        return dir_dict
+    total_path = parts[1].rstrip('/')
     for line in lines:
         parts = line.strip().split(maxsplit=1)
         if len(parts) != 2:
@@ -31,11 +39,12 @@ def create_dir_dict(lines, target_dir):
             size = int(size_str)
         except ValueError:
             continue
-        # Skip the summary line (same as input directory)
-        if path.rstrip('/') == target_dir.rstrip('/'):
+        # Skip the summary line (same as total path)
+        if path.rstrip('/') == total_path:
             continue
         dir_dict[path] = size
     return dir_dict
+
 
 def percent_to_graph(percent, total_chars):
     if percent < 0 or percent > 100:
