@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 # Author: SMISHRA27 / 137285227
 
+OPS445 Assignment 2 - Winter 2025
+Program: duim.py 
+Author: "SMISHRA27 / 137285227"
+
+The python code in this file (duim.py) is original work written by
+"SMISHRA27". No code in this file is copied from any other source 
+except those provided by the course instructor, including any person, 
+textbook, or online resource. I have not shared this python script 
+with anyone or anything except for submission for grading.  
+I understand that the Academic Honesty Policy will be enforced and 
+violators will be reported and appropriate action will be taken.
+
+Description: This script mimics the functionality of `du`, displaying disk usage
+with a bar graph representing space usage in a directory
+
 import argparse
 import subprocess
 import sys
@@ -24,13 +39,9 @@ def create_dir_dict(lines):
     dir_dict = {}
     if not lines:
         return dir_dict
-    # Get target directory from the last line (total line)
-    last_line = lines[-1]
-    parts = last_line.strip().split(maxsplit=1)
-    if len(parts) != 2:
-        return dir_dict
-    total_path = parts[1].rstrip('/')
-    for line in lines:
+
+    # Exclude the last line (it's the total for the directory)
+    for line in lines[:-1]:  # ← exclude last line
         parts = line.strip().split(maxsplit=1)
         if len(parts) != 2:
             continue
@@ -39,10 +50,8 @@ def create_dir_dict(lines):
             size = int(size_str)
         except ValueError:
             continue
-        # Skip the summary line (same as total path)
-        if path.rstrip('/') == total_path:
-            continue
         dir_dict[path] = size
+
     return dir_dict
 
 
