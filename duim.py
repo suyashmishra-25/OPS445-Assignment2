@@ -44,28 +44,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def call_du_sub(target_dir):
-    try:
-        result = subprocess.run(
-            ['du', '-d', '1', target_dir],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        )
-        lines = result.stdout.strip().split('\n')
-        return lines
-    except subprocess.CalledProcessError as e:
-        # Gracefully return empty list so tests pass
-        return []
+def draw_bar(percent, width):
+    """Constructs a bar graph string based on percentage and desired width."""
+    if not (0 <= percent <= 100):
+        raise ValueError("Percentage value must be within 0–100.")
+    filled = round((percent / 100) * width)
+    return "=" * filled + " " * (width - filled)
+
 
 def create_dir_dict(lines):
     dir_dict = {}
     if not lines:
         return dir_dict
 
-    # Exclude the last line (it's the total for the directory)
-    for line in lines[:-1]:  # ← exclude last line
+    # Excluing the last line (it's the total for the directory)
+    for line in lines[:-1]:  # excludes last line
         parts = line.strip().split(maxsplit=1)
         if len(parts) != 2:
             continue
@@ -77,13 +70,6 @@ def create_dir_dict(lines):
         dir_dict[path] = size
 
     return dir_dict
-
-
-def percent_to_graph(percent, total_chars):
-    if percent < 0 or percent > 100:
-        raise ValueError("Percent must be between 0 and 100.")
-    filled_length = int(round(percent / 100 * total_chars))
-    return '[' + '=' * filled_length + ' ' * (total_chars - filled_length) + ']'
 
 def convert_size(size_bytes):
     for unit in ['B', 'K', 'M', 'G', 'T']:
