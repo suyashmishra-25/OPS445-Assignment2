@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Author: SMISHRA27 / 137285227
 
+"""
 OPS445 Assignment 2 - Winter 2025
 Program: duim.py 
 Author: "SMISHRA27 / 137285227"
@@ -18,6 +19,7 @@ Description: This script mimics the functionality of `du`, displaying disk usage
 with a bar graph representing space usage in a directory
 Date:April 12, 2025
 '''
+"""
 
 import sys
 import os
@@ -25,7 +27,6 @@ import subprocess
 import argparse
 
 def parse_args():
-    """Parses command-line options using argparse."""
     parser = argparse.ArgumentParser(
         description="Enhanced Disk Usage Viewer with bar chart visualization"
     )
@@ -38,75 +39,94 @@ def parse_args():
         help="Display sizes in human-readable format (KB, MB, GB...)"
     )
     parser.add_argument(
-        "directory", nargs="?", default=os.getcwd(),
+        "target", nargs="?", default=os.getcwd(),
         help="Target directory to analyze (default: current directory)"
     )
     return parser.parse_args()
 
 
-def draw_bar(percent, width):
+def percent_to_graph(percent, width):
     """Constructs a bar graph string based on percentage and desired width."""
     if not (0 <= percent <= 100):
         raise ValueError("Percentage value must be within 0–100.")
     filled = round((percent / 100) * width)
     return "=" * filled + " " * (width - filled)
 
+def call_du_sub(directory_path):
+    """
+    Runs 'du -d 1' on the given path and returns a list of output lines.
+    Ignores permission-denied warnings but displays other errors.
+    """
+    try:
+        proc = subprocess.Popen(
+            ["du", "-d", "1", directory_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        output, errors = proc.communicate()
 
-def create_dir_dict(lines):
-    dir_dict = {}
-    if not lines:
-        return dir_dict
+        # Filter out known permission-denied lines
+        error_lines = [
+            line for line in errors.strip().split("\n")
+            if "Permission denied" not in line
+        ]
+        if error_lines:
+            print("\n".join(error_lines), file=sys.stderr)
 
-    # Excluing the last line (it's the total for the directory)
-    for line in lines[:-1]:  # excludes last line
-        parts = line.strip().split(maxsplit=1)
-        if len(parts) != 2:
-            continue
-        size_str, path = parts
-        try:
-            size = int(size_str)
-        except ValueError:
-            continue
-        dir_dict[path] = size
+        return output.strip().split("\n")
+    except FileNotFoundError:
+        print("Error: 'du' utility not found. Make sure it's installed.", file=sys.stderr)
+        sys.exit(1)
 
-    return dir_dict
+def create_dir_dict(output_lines):
+    """
+    Converts du output into a dictionary mapping paths to sizes.
+    Ignores malformed lines.
+    """
+    usage_map = {}
+    for entry in output_lines:
+        parts = entry.strip().split("\t")
+        if len(parts) == 2:
+            size, path = parts
+            try:
+                usage_map[path] = int(size)
+            except ValueError:
+                continue
+    return usage_map
 
-def convert_size(size_bytes):
-    for unit in ['B', 'K', 'M', 'G', 'T']:
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.1f} P"
+def format_size(bytes_val, human_flag):
+    """Formats the byte size into a readable string based on the flag."""
+    if not human_flag:
+        return f"{bytes_val} B"
 
-def main():
-    parser = argparse.ArgumentParser(description="du Improved")
-    parser.add_argument('directory', help='Target directory')
-    parser.add_argument('-H', '--human-readable', action='store_true', help='Display sizes in human-readable format')
-    parser.add_argument('-l', '--length', type=int, default=20, help='Length of the bar graph')
-    args = parser.parse_args()
-    print(f"DEBUG: Target Directory = {args.directory}")  # Debug
-    lines = call_du_sub(args.directory)
-    print(f"DEBUG: Output from du = {lines}")  # Debug
-    total_size = 0
-    entries = []
-    for line in lines:
-        parts = line.strip().split(maxsplit=1)
-        if len(parts) != 2:
-            continue
-        size_str, path = parts
-        size = int(size_str)
-        if path.rstrip('/') == args.directory.rstrip('/'):
-            total_size = size
-        else:
-            entries.append((size, path))
+    float_val = float(bytes_val)
+    for unit in ["B", "K", "M", "G", "T"]:
+        if float_val < 1024:
+            return f"{float_val:.1f} {unit}"
+        float_val /= 1024
+    return f"{float_val:.1f} P"
 
-    for size, path in entries:
-        percent = (size / total_size) * 100 if total_size else 0
-        bar = percent_to_graph(percent, args.length)
-        size_display = convert_size(size) if args.human_readable else f"{size} B"
-        print(f"{percent:6.1f}% {bar} {size_display:>10} {path}")
-    total_display = convert_size(total_size) if args.human_readable else f"{total_size} B"
-    print(f"\nTotal: {total_display} {args.directory}")
+
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+
+    if not os.path.isdir(args.target):
+        print(f"Error: '{args.target}' is not a valid directory.", file=sys.stderr)
+        sys.exit(1)
+
+    du_data = run_du(args.directory)
+    dir_sizes = convert_output_to_dict(du_data)
+
+    total = dir_sizes.get(args.directory, sum(dir_sizes.values()))
+
+    print("\nDisk Usage Overview:")
+    for path, size in sorted(dir_sizes.items(), key=lambda item: item[1], reverse=True):
+        percent = (size / total) * 100 if total > 0 else 0
+        bar = draw_bar(percent, args.length)
+        readable_size = format_size(size, args.human_readable)
+        print(f"{percent:5.1f}% [{bar}] {readable_size:>8}  {path}")
+
+    total_formatted = format_size(total, args.human_readable)
+    print(f"\nTotal: {total_formatted}  {args.target}")
