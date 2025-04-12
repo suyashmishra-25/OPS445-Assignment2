@@ -5,6 +5,7 @@ OPS445 Assignment 2 - Winter 2025
 Program: duim.py 
 Author: "SMISHRA27 / 137285227"
 
+'''
 The python code in this file (duim.py) is original work written by
 "SMISHRA27". No code in this file is copied from any other source 
 except those provided by the course instructor, including any person, 
@@ -15,10 +16,33 @@ violators will be reported and appropriate action will be taken.
 
 Description: This script mimics the functionality of `du`, displaying disk usage
 with a bar graph representing space usage in a directory
+Date:April 12, 2025
+'''
 
-import argparse
-import subprocess
 import sys
+import os
+import subprocess
+import argparse
+
+def parse_args():
+    """Parses command-line options using argparse."""
+    parser = argparse.ArgumentParser(
+        description="Enhanced Disk Usage Viewer with bar chart visualization"
+    )
+    parser.add_argument(
+        "-l", "--length", type=int, default=20,
+        help="Length of the bar graph in characters (default: 20)"
+    )
+    parser.add_argument(
+        "-H", "--human-readable", action="store_true",
+        help="Display sizes in human-readable format (KB, MB, GB...)"
+    )
+    parser.add_argument(
+        "directory", nargs="?", default=os.getcwd(),
+        help="Target directory to analyze (default: current directory)"
+    )
+    return parser.parse_args()
+
 
 def call_du_sub(target_dir):
     try:
